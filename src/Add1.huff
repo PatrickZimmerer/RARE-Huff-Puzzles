@@ -13,5 +13,28 @@
 
 
 #define macro MAIN() = takes(0) returns(0) {
+    0x00                // [0]
+    calldataload        // [first 32 bytes of calldata]
+    0xe0                // [224, first 32 bytes of calldata]
+    shr                 // [first 4 bytes of calldata]
+    __FUNC_SIG(add1)    // [keccak256 of our function selecter "add1(uint256)", first 4 bytes of calldata]
+    eq add1 jumpi       // will jump to the macro ADD_ONE if first 4 bytes of calldata equals the hash of "add1(uint256)"
+    0x00 0x00 revert    // reverts when the check for equality fails
+
+    add1:
+        ADD_ONE()
+    
+
+}
+
+
+#define macro ADD_ONE() = takes(0) returns(0) {
+    0x04 calldataload   // loads 32bytes after the first 4 bytes to the stack
+    0x01                // [1, userInput]
+    add                 // [res (userInput + 1)]
+    0x00                // [0, res]    
+    mstore              // []
+    
+    0x20 0x00 return    // returns 32bytes at offset 0 where our result lies
 
 }
