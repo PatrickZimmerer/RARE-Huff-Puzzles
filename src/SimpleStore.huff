@@ -16,5 +16,16 @@
 
 
 #define macro MAIN() = takes(0) returns(0) {
-    
+    0x00 calldataload 0xe0 shr dup1     // load first 4 bytes of calldata & duplicate
+    __FUNC_SIG(store) eq store jumpi    // check for right func selector and jump to function
+    __FUNC_SIG(read) eq read jumpi      // check for right func selector and jump to function
+    0x00 0x00 revert                    // revert otherwise
+
+    store:
+        0x04 calldataload 0x00 sstore   // skip first 4 bytes and load calldata, store value at slot 0
+        0x00 0x00 return               
+
+    read:
+        0x00 sload 0x00 mstore          // load value at 0th slot and store the value at 0x00 in memory
+        0x20 0x00 return                // return first 32 bytes of memory
 }
