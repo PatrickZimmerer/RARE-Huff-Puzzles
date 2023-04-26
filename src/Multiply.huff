@@ -4,7 +4,8 @@
  *
  *  When writing solidity, we most times have to perform some mathematical operations like multiplication etc
  *  
- *  The task is to write within the `MAIN` macro below, a function named `multiply` that takes in 2 uint256s, and returns their product. Be sure to revert on overflow
+ *  The task is to write within the `MAIN` macro below, a function named `multiply` that takes in 2 uint256s, and returns their product.
+ *  Be sure to revert on overflow
  *
  *  NOTICE: The contract should revert when an unrecognized function is called
  */
@@ -13,5 +14,27 @@
 
 
 #define macro MAIN() = takes(0) returns(0) {
+    0x00 calldataload 0xe0 shr              // [first 4 bytes of calldata (function selector)]
+    __FUNC_SIG(multiply) eq multiply jumpi  // will check if the function selector is correct and jump to multiply if true 
+    0x00 0x00 revert                        // else it will revert
 
+    multiply:
+        MULTIPLY()
+}
+// will be using example values "a" * "b" as input 1 & input 2 and "result" as result of multiplication
+#define macro MULTIPLY() = takes(0) returns(0) {
+    0x04 calldataload       // [first value from calldata (after func selector 4 bytes) = a]
+    0x24 calldataload       // [b, a]
+    dup2 dup2 dup2          // duplicates values for overflow check [a, b, a, b, a]
+    mul swap3               // calculates result and swaps with a for zero check[a, a, b, result]
+    iszero                  // check1: checks for zero (bc overflow) [0/1, a, b, result]
+    swap2 swap1 dup4        // rearange stack for further checks [result, a, b, 0/1, result]
+    div eq                  // check2: checks if result / a == b [0/1, 0/1, result]   
+    or                      // checks if check1 || check2 was true if so => no underflow [0/1, 6]
+    end jumpi               // jumpi when overflow check passes ["end" jumptag, 0/1, 6]
+    0x00 0x00 revert        // else it will revert
+
+    end:
+        0x00 mstore         // stores our value in memory
+        0x20 0x00 return    // returns our stored result 
 }
