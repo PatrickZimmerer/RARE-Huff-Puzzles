@@ -23,7 +23,7 @@
         // since we stored our calldata at 0x60 the first actual value will begin at 0x80 and the length is on 0x60
         0x80 0x20 mstore                       // store the next number to check at memory 0x20
         0x00 0x60 mload                        // load the length of the array [arr.length, 0]
-        0x01 dup2 sub swap1                         // dupe length and sub 1 [length - 1, length, 0]
+        0x01 dup2 sub swap1                    // dupe length and sub 1 [length - 1, length, 0]
         0x40 mstore                            // safe length at 0x40 for later checks [length, 0]
         gt loop jumpi                          // checks if length > 0 if so we jump into the loop
         0x20 0x00 return                       // if not > 0 return 0
