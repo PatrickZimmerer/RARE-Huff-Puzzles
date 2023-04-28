@@ -18,16 +18,16 @@
     0x00 0x00 revert
 
     sumArr:
-        0x05 calldatasize lt 
+        0x45 calldatasize lt 
         ret jumpi                       // jumps to the end if calldatasize is 4 bytes or lower
-        0x04 calldatasize sub           // removes 4 bytes (func selector)
+        0x44 calldatasize sub           // removes 44 bytes (func selector, pointer to memory location & length of the array)
         // now we need to loop and reduc eour number on the stack by 32 bytes each iteration and add to our result
         // until we hit 0 on that number then we have used up every number in the array
-        0x00 0x04 swap2                 // add one index for calldata counter to load the correct calldata
-        // [4, 0, calldatasize - 4 bytes]
-        // 4 will become our "getNextItem" and 0 will be "sum"
+        0x00 0x44 swap2                 // add one index for calldata counter to load the correct calldata
+        // [calldatasize - 44 bytes, 0, 44] setup stack for loop
+        // 44 will become our "getNextItem" and 0 will be "sum"
     loop:   
-        // loads the first value and saves the 4 bytes which will be increased after
+        // loads the first value and saves the 44 bytes which will be increased after
         // I will call the result "sum" the remaining amount of calldatas we need to load "restData"
         // and the number that keeps track of the next item we need to get "getNextItem"
         swap2
