@@ -1,8 +1,9 @@
-
+#include "./Console.huff"
 /** 
  *  MAX_OF_ARRAY HUFF EXERCISE
  *  
- *  In this task, Given an abi encoded array of uint256, return its maximum value. Revert if the array is empty.
+ *  In this task, Given an abi encoded array of uint256, return its maximum value. 
+ *  Revert if the array is empty.
  *
  *  NOTICE: The contract should revert when an unrecognized function is called
  */
@@ -10,5 +11,44 @@
 #define function maxOfArray(uint256[]) payable returns(uint256)
 
 #define macro MAIN() = takes(0) returns(0) {
-   
+   0x00 calldataload 0xe0 shr    // get function selector
+   __FUNC_SIG(maxOfArray) eq maxArr jumpi
+   0x00 0x00 revert
+
+   maxArr:
+        // copy all calldata except function selector & pointer to the begining of the array in memory  
+        // at 0x60 to leave space for: current number, the currently highest number & memory pointer
+        calldatasize 0x24 0x60 calldatacopy    // []
+        0x00 0x00 mstore                       // store highest number at memory 0x00 starting as 0 [highestNumber]
+        // since we stored our calldata at 0x60 the first actual value will begin at 0x80 and the length is on 0x60
+        0x80 0x20 mstore                       // store the next number to check at memory 0x20
+        0x00 0x60 mload                        // load the length of the array [arr.length, 0]
+        0x01 dup2 sub swap1                         // dupe length and sub 1 [length - 1, length, 0]
+        0x40 mstore                            // safe length at 0x40 for later checks [length, 0]
+        gt loop jumpi                          // checks if length > 0 if so we jump into the loop
+        0x20 0x00 return                       // if not > 0 return 0
+
+    // stack should be empty, and the needed variables will be located at those points in memory:
+    // highestNumber: 0x00, memory pointer for currentValue: 0x20, remaining amount of values: 0x40
+    loop:
+        0x00 mload                            // [highestValue]
+        0x20 mload                            // [pointer to next value, highestValue]
+        dup1 0x20 add 0x20 mstore             // updated pointer at 0x20 [pointer to next value, highestValue]
+        mload                                 // [nextValue, highestValue]
+        dup2 dup2                             // [nextValue, highestValue, nextValue, highestValue]
+        gt updateValue jumpi                  // [0/1, nextValue, highestValue]
+        pop pop                               // []
+        0x01 0x40 mload sub                   // reduced length [length - 1]
+        0x00 dup2                             // [length, 0, length]
+        gt swap1 0x40 mstore                  // [0/1] updated length stored at 0x40
+        loop jumpi                            // jump back to loop when > 0
+        0x20 0x00 return                      // return value at 0x00 (highestNumber)
+
+    updateValue:
+        0x00 mstore pop                       // stored new highestValue and pop off old value []
+        0x01 0x40 mload sub                   // reduced length [length - 1]
+        0x00 dup2                             // [length, 0, length]
+        gt swap1 0x40 mstore                  // [0/1] updated length stored at 0x40
+        loop jumpi                            // jump back to loop when > 0
+        0x20 0x00 return                      // return value at 0x00 (highestNumber)
 }
