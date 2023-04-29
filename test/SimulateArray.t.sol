@@ -71,13 +71,13 @@ contract SimulateArrayTest is Test, NonMatchingSelectorHelper {
         assertEq(simulateArray.read(1), 346, "expected arr[1] to be 346");
 
         simulateArray.popp();
-        assertEq(simulateArray.length(), 2, "expected length to be 2");
+        assertEq(simulateArray.length(), 1, "expected length to be 1");
         assertEq(simulateArray.read(0), 122, "expected arr[0] to be 122");
         vm.expectRevert(bytes4(keccak256("OutOfBounds()")));
         simulateArray.read(1);
     }
 
-    /// @notice Test that a non-matching selector reverts
+    // @notice Test that a non-matching selector reverts
     function testNonMatchingSelector(bytes32 callData) public {
         bytes4[] memory func_selectors = new bytes4[](5);
         func_selectors[0] = SimulateArray.pushh.selector;
