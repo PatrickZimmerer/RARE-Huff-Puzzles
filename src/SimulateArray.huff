@@ -1,8 +1,9 @@
-
+#include "./Console.huff"
 /** 
  *  SUM_ARRAY HUFF EXERCISE
  *
- * In this puzzle, the task is to simulate an array in Huff using the "exact" storage pattern as solidity. Expected functions can; 
+ * In this puzzle, the task is to simulate an array in Huff using the "exact" storage pattern as solidity. 
+ * Expected functions can; 
  *      - Push numbers onto a array, 
  *      - Pop the last index from the array,
  *      - View what's stored at an index, 
@@ -24,6 +25,84 @@
  #define error OutOfBounds()
  #define error ZeroArray()
 
+    // We will assume STORAGE SLOT IS 0 for the "simulated" array
+    // So we will need the pointer to the begining (length of the array) 
+    // which is the keccak256 of the storage slot since we need that 
+    // in every function we can do that before anything else 
  #define macro MAIN() = takes(0) returns(0) {
-    
+    0x00 0x00 mstore                     // store 0 at 0th slot
+    0x20 0x00 sha3                       // [array location (hash of storage slot)]
+    0x00 calldataload 0xe0 shr           // get function selector
+    dup1 dup1 dup1 dup1                  // [ptr to arr, selector, selector, selector, selector, selector]
+    __FUNC_SIG(pushh) eq pushh jumpi     // jumps to destination when selector matches
+    __FUNC_SIG(popp) eq popp jumpi       // jumps to destination when selector matches
+    __FUNC_SIG(read) eq read jumpi       // jumps to destination when selector matches
+    __FUNC_SIG(length) eq length jumpi   // jumps to destination when selector matches
+    __FUNC_SIG(write) eq write jumpi     // jumps to destination when selector matches
+    pop 0x00 0x00 revert                 // else it pops the pointer to array and reverts
+
+    pushh:                               // [ptr to arr, selector, selector, selector, selector]
+        pop pop pop pop                  // [ptr to arr]
+        dup1 sload dup1                  // [length of arr, length of arr, ptr to arr]
+        0x01 add                         // [new length, length of arr, ptr to arr]
+        dup3                             // [ptr to arr, new length, length of arr, ptr to arr]
+        sstore                           // update new length of arr [old length, ptr of arr]
+        0x01 add                         // [new length, ptr of arr]
+        add                              // adds length of arr to get the end [end of arr]
+        0x04 calldataload swap1          // gets calldata and swaps for store [end of arr, calldata]
+        sstore                           // stores new value at end of arr []
+        0x00 0x00 return                 // return when done
+
+    popp:                                // [ptr to arr, selector, selector, selector]    
+        pop pop pop dup1 dup1            // [ptr to arr, ptr to arr]
+        sload dup1 0x00                  // [0, length of arr, length of arr, ptr to arr, ptr to arr]
+        eq revertZeroArray jumpi         // checks if length == 0 and reverts if so [length of arr, ptr to arr, ptr to arr]
+        0x01 dup2                        // push 1 and dupe length to store new length [length, 1, length, ptr, ptr]
+        sub swap1 swap2                  // calc new length and prepare for store [ptr, new length, old length, ptr]
+        sstore                           // store new value of length at the existing ptr slot [old length, ptr]
+        add                              // increase the ptr by length of array [end of arr]
+        0x00 swap1                       // add 0 to clear the storage slot and swap to sstore the 0 [end of arr, 0]
+        sstore                           // clears the storage slot and gives gas refund for setting storage to 0
+        0x00 0x00 return                 // return when done            
+
+    read:                                // [ptr to arr, selector, selector]    
+        pop pop                          // [ptr to arr]
+        dup1 sload dup1                  // [length of arr, length of arr, ptr to arr]
+        0x04 calldataload 0x01 add       // get user input index from calldata [index, length of arr, length of arr, ptr to arr]
+        gt                               // checks if index > length [0/1, length of arr, ptr to arr]
+        swap1 iszero                     // checks if length is 0 [0/1, 0/1, ptr to arr]                   
+        or                               // ors both checks together [0/1, ptr to arr]
+        revertOutOfBounds jumpi          // reverts if index > length since index starts at 0 & length at 1  [ptr to arr]
+        0x01 add 0x04 calldataload add   // adds 1 + index to the ptr to get the right value which will be read [slot to read]
+        sload                            // loads value from the slot we calculated [value from slot]
+        0x00 mstore                      // store value at 0x00 to return that later
+        0x20 0x00 return                 // return value when done
+
+    length:                              // [ptr to arr, selector]    
+        pop                              // [ptr to arr]
+        sload                            // gets the length of the array [length of arr]
+        0x00 mstore                      // store the value at 0x00 and return that afterwards
+        0x20 0x00 return                 // return length when done
+
+    write:                               // [ptr to arr]
+        dup1 sload dup1                  // [length of arr, length of arr, ptr to arr]
+        0x04 calldataload 0x01 add       // get user input index from calldata [index, length of arr, length of arr, ptr to arr]
+        gt                               // checks if index > length [0/1, length of arr, ptr to arr]
+        swap1 iszero                     // checks if length is 0 [0/1, 0/1, ptr to arr]                   
+        or                               // checks if index is 0 and ors both checks together [0/1, ptr to arr]
+        revertOutOfBounds jumpi          // reverts if index > length since index starts at 0 & length at 1  [ptr to arr]
+        0x01 add 0x04 calldataload add   // adds 1 + index to the ptr to get the right value which will be overwritten [slot to write to]
+        0x24 calldataload swap1          // [slot to write to, user input new value]
+        sstore                           // stored new value at given index
+        0x00 0x00 return                 // return when done
+
+    revertOutOfBounds:                   // [length of arr]
+        pop                              // pop off length of arr []
+        __ERROR(OutOfBounds) 0x00 mstore // stores the error at 0x00 in memory
+        0x04 0x00 revert
+
+    revertZeroArray:                    // [length of arr, ptr to arr]
+        pop pop                         // pop of the ptr to arr & length of arr []
+        __ERROR(ZeroArray) 0x00 mstore  // stores the error at 0x00 in memory
+        0x04 0x00 revert
  }
