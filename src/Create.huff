@@ -1,4 +1,4 @@
- 
+#include "./Console.huff"
 /** 
  *  CREATE HUFF EXERCISE
  *  
@@ -13,5 +13,33 @@
 
 
  #define macro MAIN() = takes(0) returns(0) {
-    
+    LOG_CALLDATA(0x00, calldatasize, 0x00)
+    0x00 calldataload 0xe0 shr                            // get function selector [selector]
+    __FUNC_SIG(makeContract) eq makeContract jumpi        // jumps to make contract fucntion if selector matches
+    0x00 0x00 revert                                      // else revert
+
+    makeContract:                                         // []
+        // PUSH3 0x0caffe                                 // Pushes 0x0caffe 
+        // PUSH1 0x00                                     // [0, 0caffe]
+        // MSTORE                                         // []
+        // PUSH1 0x20                                     // [20]
+        // PUSH1 0x00                                     // [0, 20]
+        // RETURN                                         // []
+        // => runtime code = 620caffe60005260206000f3
+
+        // PUSH1 0x0c                                     // length of runtime code [length runtime]          
+        // DUP1                                           // copy length of runtime code [length runtime, length runtime]      
+        // PUSH1 0x0b                                     // length init code [length init, length runtime, length runtime]
+        // PUSH1 0x00                                     // [0, length init, length runtime, length runtime]
+        // CODECOPY                                       // copied code to memory [length runtime]
+        // PUSH1 0x00                                     // [0, length runtime]
+        // RETURN                                         // []
+        // => init code = 600c80600b6000396000f3
+        // contract code => 600c80600b6000396000f3620caffe60005260206000f3
+        __RIGHTPAD(0x600c80600b6000396000f3620caffe60005260206000f3)  // [contract code padded to 32 bytes]
+        0x00 mstore                                       // stored contract code in memory to prep for CREATE []
+        0x17 0x00 0x00                                    // [size of code, offset, value to send]
+        create                                            // [address of new contract]
+        0x00 mstore                                       // stores the address of the contract
+        0x20 0x00 return                                  // returns the address of the contract
  }
