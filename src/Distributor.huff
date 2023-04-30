@@ -1,4 +1,4 @@
- 
+#include "./Console.huff"
 /** 
  *  DISTRIBUTE HUFF EXERCISE
  *  
@@ -14,5 +14,41 @@
 
 
  #define macro MAIN() = takes(0) returns(0) {
-   
+    LOG_CALLDATA(0x00, calldatasize, 0x00)
+    0x00 calldataload 0xe0 shr                   // get func selector [selector]
+    __FUNC_SIG(distribute) eq distribute jumpi   // jump if selector matches
+    0x00 0x00 revert                             // else revert
+
+    distribute:
+        address balance                         // [contracts balance]
+        0x24 calldataload                       // [arr.length, balance]
+        dup1 iszero                             // [0/1, arr.lenght, balance]
+        revertNow jumpi                         // jumps to revert if length == 0 [arr.lenght, balance]
+        dup1 0x20 mstore                        // store length at 0x20 [length, balance]
+        swap1 div                               // [balance / arr.length]
+        0x40 mstore                             // store the amount per person at 0x40 []
+        0x44 0x60 mstore                        // store pointer at 0x60
+    // we stored the:
+    // - length at 0x20 which needs to be updated 
+    // - the amount p.P. at 0x40
+    // - pointer to next value at 0x60
+    loop:
+        0x00 dup1 dup1 dup1                     // [0, 0, 0, 0]
+        0x40 mload                              // [amount, 0, 0, 0, 0]
+        0x60 mload calldataload                 // [address, amount, 0, 0, 0, 0]
+        gas call                                // adds gas and transfers [0 / 1]
+        pop 0x01                                // pops off return value of call [1]
+        0x20 mload sub                          // load length [length - 1]
+        dup1 0x20 mstore                        // store new length for later [new length] 
+        iszero justReturn jumpi                 // checks for zero and returns when done
+        0x60 mload 0x20 add                     // updates pointer [new pointer]
+        0x60 mstore                             // saves new pointer for next address []
+        loop jump                               // repeat as long as length > 1
+
+    justReturn:
+        0x00 0x00 return                        // just returns
+
+    revertNow:                                  // [arr.lenght, balance]
+        pop pop                                 // clear stack
+        0x00 0x00 revert                        // revert
  }
